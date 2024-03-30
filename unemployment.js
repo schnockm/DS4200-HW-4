@@ -1,5 +1,7 @@
-// Load the CSV data
-d3.csv("us_statewide_crime.csv").then(function(data) {
+// Define data
+const crime = d3.csv("us_statewide_crime.csv");
+
+crime.then(function(data) {
     // Convert string values to numbers
     data.forEach(function(d) {
         d.Unemployed = +d.Unemployed;
@@ -8,49 +10,65 @@ d3.csv("us_statewide_crime.csv").then(function(data) {
     // Sort data by unemployment rate
     data.sort((a, b) => b.Unemployed - a.Unemployed);
 
-    // Define dimensions for the chart
-    const width = 600;
-    const height = 400;
-    const margin = { top: 20, right: 30, bottom: 30, left: 40 };
-    const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height - margin.top - margin.bottom;
+    // Extract state names and unemployment rates
+    const states = data.map(d => d.State);
+    const unemploymentRates = data.map(d => d.Unemployed);
 
-    // Create SVG container
-    const svg = d3.select('#chart-container').append('svg')
-      .attr('width', width)
-      .attr('height', height);
+    // Define the chart specification using D3
+    const svgWidth = 600;
+    const svgHeight = 400;
+    const margin = { top: 20, right: 30, bottom: 30, left: 60 };
+    const chartWidth = svgWidth - margin.left - margin.right;
+    const chartHeight = svgHeight - margin.top - margin.bottom;
 
-    // Create scales
-    const xScale = d3.scaleBand()
-      .domain(data.map(d => d.State))
-      .range([margin.left, innerWidth + margin.left])
-      .padding(0.1);
+    const svg = d3.select("#plot")
+                  .attr("width", svgWidth)
+                  .attr("height", svgHeight);
 
-    const yScale = d3.scaleLinear()
-      .domain([0, d3.max(data, d => d.Unemployed)])
-      .nice()
-      .range([innerHeight + margin.top, margin.top]);
+    const xScale = d3.scaleLinear()
+                     .domain([0, d3.max(unemploymentRates)])
+                     .range([margin.left, svgWidth - margin.right]);
 
-    // Add bars to the chart
-    svg.selectAll('.bar')
-      .data(data)
-      .enter().append('rect')
-      .attr('class', 'bar')
-      .attr('x', d => xScale(d.State))
-      .attr('y', d => yScale(d.Unemployed))
-      .attr('width', xScale.bandwidth())
-      .attr('height', d => innerHeight + margin.top - yScale(d.Unemployed))
-      .on('click', function(d) {
-          d3.select(this).attr('fill', 'red');
-      });
+    const yScale = d3.scaleBand()
+                     .domain(states)
+                     .range([margin.top, svgHeight - margin.bottom])
+                     .padding(0.1);
 
-    // Add x-axis
-    svg.append('g')
-      .attr('transform', `translate(0,${innerHeight + margin.top})`)
-      .call(d3.axisBottom(xScale));
+    const colorScale = d3.scaleOrdinal()
+                         .domain(states)
+                         .range(d3.schemeCategory10);
 
-    // Add y-axis
-    svg.append('g')
-      .attr('transform', `translate(${margin.left},0)`)
-      .call(d3.axisLeft(yScale));
+    svg.selectAll("rect")
+       .data(data)
+       .enter()
+       .append("rect")
+       .attr("x", margin.left)
+       .attr("y", d => yScale(d.State))
+       .attr("width", d => xScale(d.Unemployed) - margin.left)
+       .attr("height", yScale.bandwidth())
+       .attr("fill", "steelblue")
+       .on("click", function(d) {
+           d3.select(this).attr("fill", "red");
+       });
+
+    svg.append("g")
+       .attr("transform", `translate(${margin.left},0)`)
+       .call(d3.axisLeft(yScale));
+
+    svg.append("g")
+       .attr("transform", `translate(0,${svgHeight - margin.bottom})`)
+       .call(d3.axisBottom(xScale));
+
+    svg.append("text")
+       .attr("x", svgWidth / 2)
+       .attr("y", svgHeight - 10)
+       .style("text-anchor", "middle")
+       .text("Unemployed");
+
+    svg.append("text")
+       .attr("transform", "rotate(-90)")
+       .attr("x", 0 - svgHeight / 2)
+       .attr("y", 10)
+       .style("text-anchor", "middle")
+       .text("State");
 });
